@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Painel Digital – Escola Secundária Joaquim de Araújo</title>
+<style>
+  :root {
+    --bg: #0b1220; --panel: #121c2e; --panel2: #18263d;
+    --text: #e8eef8; --muted: #8ea3c2; --accent: #f5b301; --ok: #3ddc97;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: var(--bg); color: var(--text);
+    font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; overflow: hidden; }
+  .screen {
+    width: 100vw; height: 100vh; padding: 16px; display: grid; gap: 16px;
+    grid-template-columns: 1.6fr 1fr;
+    grid-template-rows: auto 1fr 1fr 1fr;
+    grid-template-areas:
+      "header  header"
+      "live    weather"
+      "live    bus"
+      "news    news";
+  }
+  header {
+    grid-area: header; display: flex; justify-content: space-between; align-items: center;
+    background: var(--panel); border-radius: 14px; padding: 12px 20px;
+  }
+  header h1 { font-size: 26px; font-weight: 600; }
+  header .clock { font-size: 34px; font-variant-numeric: tabular-nums; color: var(--accent); }
+  .card { background: var(--panel); border-radius: 14px; padding: 16px; overflow: hidden;
+    display: flex; flex-direction: column; min-height: 0; }
+  .card h2 { font-size: 15px; text-transform: uppercase; letter-spacing: .08em;
+    color: var(--muted); margin-bottom: 10px; font-weight: 600; }
+  #live { grid-area: live; padding: 0; position: relative; }
+  #live iframe { width: 100%; height: 100%; border: 0; border-radius: 14px; }
+  #live .tag { position: absolute; top: 12px; left: 12px; background: #d62828;
+    padding: 4px 10px; border-radius: 6px; font-size: 13px; font-weight: 700; z-index: 2; }
+  #weather { grid-area: weather; }
+  .wgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; flex: 1; }
+  .wbox { background: var(--panel2); border-radius: 12px; padding: 12px;
+    display: flex; flex-direction: column; justify-content: center; }
+  .wbox .lbl { color: var(--muted); font-size: 13px; }
+  .wbox .val { font-size: 40px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .wbox .unit { font-size: 16px; color: var(--muted); font-weight: 400; margin-left: 4px; }
+  #bus { grid-area: bus; }
+  .bus-stop { color: var(--muted); font-size: 14px; margin-bottom: 6px; }
+  .bus-list { list-style: none; overflow: hidden; flex: 1; }
+  .bus-list li { display: grid; grid-template-columns: 90px 1fr auto; gap: 12px;
+    align-items: center; padding: 8px 6px; border-bottom: 1px solid #22314d; font-size: 20px; }
+  .bus-list .hora { font-size: 26px; font-weight: 700; color: var(--accent);
+    font-variant-numeric: tabular-nums; }
+  .bus-list .linha { background: var(--accent); color: #111; font-weight: 700;
+    padding: 2px 10px; border-radius: 6px; font-size: 16px; margin-right: 6px; }
+  .bus-list .eta { color: var(--ok); font-size: 16px; font-weight: 600; white-space: nowrap; }
+  .bus-list .eta.late { color: var(--muted); }
+  #news { grid-area: news; }
+  .news-list { list-style: none; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; flex: 1; overflow: hidden; }
+  .news-list li { background: var(--panel2); border-radius: 12px; padding: 12px;
+    display: flex; flex-direction: column; gap: 6px; overflow: hidden; }
+  .news-list a { color: var(--text); text-decoration: none; font-size: 18px; font-weight: 600;
+    line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .news-list .meta { color: var(--muted); font-size: 13px; margin-top: auto; }
+  .muted { color: var(--muted); font-size: 14px; }
+</style>
+</head>
+<body>
+
+<div class="screen">
+
+  <header>
+    <h1>Escola Secundária Joaquim de Araújo · Penafiel</h1>
+    <div class="clock" id="clock">--:--</div>
+  </header>
+
+  <section class="card" id="live">
+    <span class="tag">AO VIVO</span>
+    <iframe id="liveFrame" referrerpolicy="strict-origin-when-cross-origin"
+      allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+  </section>
+
+  <section class="card" id="weather">
+    <h2>Tempo em Penafiel</h2>
+    <div class="wgrid">
+      <div class="wbox"><span class="lbl">Temperatura</span><span class="val" id="w-temp">--</span></div>
+      <div class="wbox"><span class="lbl">Humidade</span><span class="val" id="w-hum">--</span></div>
+      <div class="wbox"><span class="lbl">Vento</span><span class="val" id="w-wind">--</span></div>
+      <div class="wbox"><span class="lbl">Índice UV</span><span class="val" id="w-uv">--</span></div>
+    </div>
+  </section>
+
+  <section class="card" id="bus">
+    <h2>Próximos autocarros Valpi</h2>
+    <div class="bus-stop" id="busStop"></div>
+    <ul class="bus-list" id="busList"><li class="muted">A carregar horários…</li></ul>
+  </section>
+
+  <section class="card" id="news">
+    <h2>Euronews · Notícias</h2>
+    <ul class="news-list" id="newsList"><li class="muted">A carregar notícias…</li></ul>
+  </section>
+
+</div>
+
+<script>
+/* ==========================================================
+   CONFIGURAÇÃO — ajuste aqui
+   ========================================================== */
+const CONFIG = {
+  location: { name: "Penafiel", lat: 41.2079, lon: -8.2853, tz: "Europe/Lisbon" },
+
+  // Transmissão ao vivo. type: "channel" (ID começa por "UC") ou "video" (ID do vídeo).
+  live: { type: "video", id: "fO9e9jnhYK8" },
+
+  // Feed RSS Euronews
+  newsFeedUrl: "https://www.euronews.com/rss",
+  newsMax: 6,
+
+  // Horários Valpi: preencha com os horários oficiais (valpi.pt / 224157960).
+  // dias: "uteis" (seg–sex), "sab", "dom", "todos"
+  busStop: "Escola Secundária Joaquim de Araújo (Penafiel)",
+  busSchedule: [
+    { linha: "7007", destino: "Valongo", hora: "07:20", dias: "uteis" },
+    { linha: "7007", destino: "Valongo", hora: "08:05", dias: "uteis" },
+    { linha: "7005", destino: "Paredes", hora: "07:40", dias: "uteis" },
+    { linha: "7005", destino: "Paredes", hora: "13:10", dias: "uteis" },
+    { linha: "7005", destino: "Paredes", hora: "17:45", dias: "uteis" },
+    { linha: "7007", destino: "Valongo", hora: "18:30", dias: "uteis" },
+    { linha: "7005", destino: "Paredes", hora: "09:30", dias: "sab" },
+    { linha: "7007", destino: "Valongo", hora: "10:30", dias: "sab" }
+  ],
+
+  refresh: { weatherMin: 10, newsMin: 15 }
+};
+
+/* ==========================================================
+   RELÓGIO
+   ========================================================== */
+function tickClock() {
+  document.getElementById("clock").textContent =
+    new Date().toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit", timeZone: CONFIG.location.tz });
+}
+setInterval(tickClock, 1000); tickClock();
+
+/* ==========================================================
+   TRANSMISSÃO AO VIVO (YouTube embed, sem som para autoplay)
+   ========================================================== */
+function setLive() {
+  const { type, id } = CONFIG.live;
+  const base = type === "channel"
+    ? `https://www.youtube.com/embed/live_stream?channel=${encodeURIComponent(id)}`
+    : `https://www.youtube.com/embed/${encodeURIComponent(id)}`;
+  document.getElementById("liveFrame").src = base + (base.includes("?") ? "&" : "?") + "autoplay=1&mute=1";
+}
+setLive();
+
+/* ==========================================================
+   TEMPO — Open-Meteo (gratuito, sem chave)
+   ========================================================== */
+function uvLabel(uv) {
+  if (uv < 3) return "baixo";
+  if (uv < 6) return "moderado";
+  if (uv < 8) return "alto";
+  if (uv < 11) return "muito alto";
+  return "extremo";
+}
+async function loadWeather() {
+  try {
+    const { lat, lon, tz } = CONFIG.location;
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+      `&current=temperature_2m,relative_humidity_2m,wind_speed_10m,uv_index` +
+      `&wind_speed_unit=kmh&timezone=${encodeURIComponent(tz)}`;
+    const j = await (await fetch(url)).json();
+    const c = j.current;
+    document.getElementById("w-temp").innerHTML = `${Math.round(c.temperature_2m)}<span class="unit">°C</span>`;
+    document.getElementById("w-hum").innerHTML  = `${Math.round(c.relative_humidity_2m)}<span class="unit">%</span>`;
+    document.getElementById("w-wind").innerHTML = `${Math.round(c.wind_speed_10m)}<span class="unit">km/h</span>`;
+    const uv = Number(c.uv_index);
+    document.getElementById("w-uv").innerHTML = `${uv.toFixed(1)}<span class="unit">${uvLabel(uv)}</span>`;
+  } catch (e) {
+    console.error("Tempo:", e);
+  }
+}
+loadWeather();
+setInterval(loadWeather, CONFIG.refresh.weatherMin * 60 * 1000);
+
+/* ==========================================================
+   NOTÍCIAS — Euronews via RSS
+   Nota: o browser bloqueia RSS direto (CORS), por isso usamos
+   rss2json (gratuito). Para produção, prefira um proxy próprio.
+   ========================================================== */
+async function loadNews() {
+  const list = document.getElementById("newsList");
+  try {
+    const api = "https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(CONFIG.newsFeedUrl);
+    const j = await (await fetch(api)).json();
+    if (j.status !== "ok") throw new Error(j.message || "feed inválido");
+    list.innerHTML = "";
+    j.items.slice(0, CONFIG.newsMax).forEach(item => {
+      const li = document.createElement("li");
+      const a = document.createElement("a");
+      a.href = item.link; a.target = "_blank"; a.rel = "noopener";
+      a.textContent = item.title;
+      const meta = document.createElement("span");
+      meta.className = "meta";
+      meta.textContent = new Date(item.pubDate.replace(" ", "T") + "Z").toLocaleString("pt-PT",
+        { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit", timeZone: CONFIG.location.tz });
+      li.append(a, meta);
+      list.appendChild(li);
+    });
+  } catch (e) {
+    list.innerHTML = `<li class="muted">Notícias indisponíveis (${e.message})</li>`;
+  }
+}
+loadNews();
+setInterval(loadNews, CONFIG.refresh.newsMin * 60 * 1000);
+
+/* ==========================================================
+   AUTOCARROS — horários configurados (sem API pública conhecida)
+   ========================================================== */
+function diaValido(dias, dow) { // dow: 0=dom ... 6=sáb
+  if (dias === "todos") return true;
+  if (dias === "uteis") return dow >= 1 && dow <= 5;
+  if (dias === "sab") return dow === 6;
+  if (dias === "dom") return dow === 0;
+  return false;
+}
+const minutosDeHora = h => { const [hh, mm] = h.split(":").map(Number); return hh * 60 + mm; };
+
+function renderBuses() {
+  document.getElementById("busStop").textContent = CONFIG.busStop;
+  const local = new Date(new Date().toLocaleString("en-US", { timeZone: CONFIG.location.tz }));
+  const dow = local.getDay();
+  const agora = local.getHours() * 60 + local.getMinutes();
+
+  const proximos = CONFIG.busSchedule
+    .filter(p => diaValido(p.dias, dow))
+    .map(p => ({ ...p, min: minutosDeHora(p.hora) }))
+    .filter(p => p.min >= agora - 1)
+    .sort((a, b) => a.min - b.min)
+    .slice(0, 6);
+
+  const ul = document.getElementById("busList");
+  if (!proximos.length) { ul.innerHTML = `<li class="muted">Sem mais partidas hoje.</li>`; return; }
+  ul.innerHTML = "";
+  proximos.forEach(p => {
+    const diff = p.min - agora;
+    const eta = diff <= 0 ? "agora" : diff < 60 ? `em ${diff} min`
+      : `em ${Math.floor(diff / 60)}h${String(diff % 60).padStart(2, "0")}`;
+    const li = document.createElement("li");
+    li.innerHTML =
+      `<span class="hora">${p.hora}</span>` +
+      `<span><span class="linha">${p.linha}</span>→ ${p.destino}</span>` +
+      `<span class="eta ${diff <= 0 ? "late" : ""}">${eta}</span>`;
+    ul.appendChild(li);
+  });
+}
+renderBuses();
+setInterval(renderBuses, 30 * 1000);
+</script>
+</body>
+</html>
